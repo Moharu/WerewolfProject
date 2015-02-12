@@ -4,14 +4,14 @@ using System.Collections;
 public class PlayerController : MonoBehaviour {
 
 	public float speed = 10f;
-	
+
 	void Update()
 	{
 		if (networkView.isMine) {
 			InputMovement();
 		}
 	}
-	
+
 	void InputMovement()
 	{
 		if (Input.GetKey(KeyCode.W))
@@ -26,5 +26,4 @@ public class PlayerController : MonoBehaviour {
 		if (Input.GetKey(KeyCode.A))
 			rigidbody.MovePosition(rigidbody.position - Vector3.right * speed * Time.deltaTime);
 	}
-
 }
