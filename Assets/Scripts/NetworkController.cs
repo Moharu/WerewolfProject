@@ -6,11 +6,14 @@ public class NetworkController : MonoBehaviour {
 
 	public GameObject lobbycanvas;
 	public GameObject menucanvas;
+	public GameObject selectservercanvas;
 
 	void Start(){
+		selectservercanvas = GameObject.FindGameObjectWithTag ("SelectServerCanvas");
 		lobbycanvas = GameObject.FindGameObjectWithTag("LobbyCanvas");
 		menucanvas = GameObject.FindGameObjectWithTag("MenuCanvas");
 		lobbycanvas.SetActive (false);
+		selectservercanvas.SetActive (false);
 	}
 	
 	private const string typeName = "WerewolfProject";
@@ -18,10 +21,6 @@ public class NetworkController : MonoBehaviour {
 	public HostData[] hostList;
 	public string myName;
 	public GameObject userOnListPrefab;
-
-	public void refreshList(){
-		networkView.RPC ("getPlayerListForAll", RPCMode.All);
-	}
 
 //RPC METHODS
 	[RPC]
@@ -97,6 +96,13 @@ public class NetworkController : MonoBehaviour {
 		Network.Instantiate(userOnListPrefab, new Vector3(0,0,0),Quaternion.identity,5);
 	}
 
+	public void refreshList(){
+		networkView.RPC ("getPlayerListForAll", RPCMode.All);
+	}
+
+	public void disconnect(){
+		Network.Disconnect ();
+	}
 
 //PRIVATE METHODS
 
@@ -106,9 +112,10 @@ public class NetworkController : MonoBehaviour {
 
 	void OnMasterServerEvent(MasterServerEvent msEvent)
 	{
-		if (msEvent == MasterServerEvent.HostListReceived)
-			hostList = MasterServer.PollHostList();
-		GameObject.FindGameObjectWithTag ("ServerList").GetComponent<ListServersController> ().listServers (hostList);	//Envia para o ListServers a lista de servidores recebeidas do MasterServer
+		if (msEvent == MasterServerEvent.HostListReceived) {
+			hostList = MasterServer.PollHostList ();
+			GameObject.FindGameObjectWithTag ("ServerList").GetComponent<ListServersController> ().listServers (hostList);	//Envia para o ListServers a lista de servidores recebeidas do MasterServer
+		}
 	}
 
 	void OnServerInitialized()
@@ -118,21 +125,24 @@ public class NetworkController : MonoBehaviour {
 	
 	void OnConnectedToServer()
 	{
+		selectservercanvas.SetActive (false);
 		menucanvas.SetActive (false);
 		lobbycanvas.SetActive (true);
 		refreshList ();
 	}
 
 	void OnDisconnectedFromServer(NetworkDisconnection info) {
-		Network.DestroyPlayerObjects (Network.player);
 		foreach (GameObject player in GameObject.FindGameObjectsWithTag("Players")) {
 			Destroy (player);
 		}
+		lobbycanvas.SetActive (false);
+		menucanvas.SetActive (true);
 	}
 
 	void OnPlayerDisconnected(NetworkPlayer player){
 		if(Network.isServer) Network.DestroyPlayerObjects (player);
 		Network.RemoveRPCs(player);	//FUNCIONA
+		refreshList ();
 	}
 
 	void OnApplicationQuit(){

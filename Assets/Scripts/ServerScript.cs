@@ -8,7 +8,6 @@ public class ServerScript : MonoBehaviour {
 
 	// Use this for initialization
 	public void Connect () {
-		Debug.Log ("Batatianha");
 		Network.Connect(server);
 	}
 

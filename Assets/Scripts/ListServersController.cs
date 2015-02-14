@@ -9,12 +9,17 @@ public class ListServersController : MonoBehaviour {
 	public int itemCount;
 	public int columnCount;
 
+	public int gambiarra=0;
+
 	private void OnEnable(){
-		int childCount = gameObject.transform.childCount;
-		for (int i=0; i<childCount; i++) {
-			Destroy (gameObject.transform.GetChild (0).gameObject);
+		gambiarra++;
+		if (gambiarra > 0) {
+			int childCount = gameObject.transform.childCount;
+			for (int i=0; i<childCount; i++) {
+				Destroy (gameObject.transform.GetChild (0).gameObject);
+			}
+			findHosts ();
 		}
-		findHosts ();
 	}
 
 	public void findHosts(){
@@ -22,10 +27,30 @@ public class ListServersController : MonoBehaviour {
 	}
 
 	public void listServers(HostData[] hosts){
-		for (int i = 0; i < hosts.Length; i++) {
-			GameObject newItem = Instantiate(serverButton,new Vector3(540,310 - 110 * i,0), Quaternion.identity) as GameObject;
-			newItem.transform.SetParent (gameObject.transform);
-			newItem.GetComponent<ServerScript>().setServer(hosts[i]);
+		itemCount = hosts.Length;
+		RectTransform rowRectTransform = serverButton.GetComponent<RectTransform> ();
+		RectTransform containerRectTransform = gameObject.GetComponent<RectTransform> ();
+		float width = containerRectTransform.rect.width;
+		float height = rowRectTransform.rect.height;
+		
+		for (int i=0; i < itemCount; i++) {
+			//Create new button
+			GameObject newItem = Instantiate (serverButton) as GameObject;
+			newItem.name = i.ToString();
+			newItem.transform.SetParent(gameObject.transform);
+			
+			//Move and Size Button
+			RectTransform rectTransform = newItem.GetComponent<RectTransform> ();
+			
+			float x = -containerRectTransform.rect.width / 2;
+			float y = containerRectTransform.rect.height / 2 - height * (i + 1);
+			rectTransform.offsetMin = new Vector2 (x, y);
+			
+			x = rectTransform.offsetMin.x + width;
+			y = rectTransform.offsetMin.y + height;
+			rectTransform.offsetMax = new Vector2 (x, y);
+
+			newItem.GetComponentInChildren<ServerScript>().server = hosts[i];
 			newItem.GetComponentInChildren<Text>().text = hosts[i].gameName;
 		}
 	}
