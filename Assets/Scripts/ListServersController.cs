@@ -1,12 +1,19 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 public class ListServersController : MonoBehaviour {
 
-	GameObject serverButton;
-	HostData[] serverList;
+	public GameObject serverButton;
+	private GameObject[] servers;
+	public int itemCount;
+	public int columnCount;
 
 	private void OnEnable(){
+		int childCount = gameObject.transform.childCount;
+		for (int i=0; i<childCount; i++) {
+			Destroy (gameObject.transform.GetChild (0).gameObject);
+		}
 		findHosts ();
 	}
 
@@ -15,17 +22,11 @@ public class ListServersController : MonoBehaviour {
 	}
 
 	public void listServers(HostData[] hosts){
-		serverList = hosts;
-	}
-
-	public void OnGUI(){
-		if (serverList != null) {
-			for (int i = 0; i < serverList.Length; i++) {
-				if (GUI.Button (new Rect (200, 200 + (110 * i), 100, 50), serverList [i].gameName)){
-					GameObject.FindGameObjectWithTag ("Canvas").SetActive (false);
-					GameObject.FindGameObjectWithTag ("MainCamera").GetComponent<NetworkController> ().JoinServer (serverList [i]);
-				}
-			}
+		for (int i = 0; i < hosts.Length; i++) {
+			GameObject newItem = Instantiate(serverButton,new Vector3(540,310 - 110 * i,0), Quaternion.identity) as GameObject;
+			newItem.transform.SetParent (gameObject.transform);
+			newItem.GetComponent<ServerScript>().setServer(hosts[i]);
+			newItem.GetComponentInChildren<Text>().text = hosts[i].gameName;
 		}
 	}
 }

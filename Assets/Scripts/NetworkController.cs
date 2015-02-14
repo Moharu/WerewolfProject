@@ -4,64 +4,74 @@ using System.Collections;
 
 public class NetworkController : MonoBehaviour {
 
+	public GameObject lobbycanvas;
+	public GameObject menucanvas;
+
+	void Start(){
+		lobbycanvas = GameObject.FindGameObjectWithTag("LobbyCanvas");
+		menucanvas = GameObject.FindGameObjectWithTag("MenuCanvas");
+		lobbycanvas.SetActive (false);
+	}
+	
 	private const string typeName = "WerewolfProject";
 	private string gameName = "Game Room";
-
-	public int playerCount;
-
+	public HostData[] hostList;
 	public string myName;
+	public GameObject userOnListPrefab;
 
-	void Update(){
-		if (Network.isServer){
-			playerCount = Network.connections.Length + 1;
-			networkView.RPC ("receivePlayerCount", RPCMode.Others, playerCount);
+	public void refreshList(){
+		networkView.RPC ("getPlayerListForAll", RPCMode.All);
+	}
+
+//RPC METHODS
+	[RPC]
+	private void getPlayerListForAll(){
+		if (Network.isServer) {
+			networkView.RPC ("refreshPlayerList", RPCMode.All, (Network.connections.Length + 1));
 		}
 	}
 
 	[RPC]
-	void sendPlayerCount(){
-		playerCount = Network.connections.Length + 1;
-		networkView.RPC ("receivePlayerCount", RPCMode.Others, playerCount);
-	}
-
-
-	[RPC]
-	void receivePlayerCount(int count){
-		playerCount = count;
-	}
-
-	[RPC]
-	void enablePlayerCreation(NetworkPlayer player){
-		networkView.RPC ("createPlayerAfterConnected", player);
-	}
-
-	[RPC]
-	void createPlayerAfterConnected(){
-		SpawnPlayer ();
-	}
-
-	public Vector3[] playerPositions = new [] { 
-		new Vector3(0f,0.5f,3f), 
-		new Vector3(2f,0.5f,2f), 
-		new Vector3(3f,0.5f,0f),
-		new Vector3(2f,0.5f,-2f),
-		new Vector3(0f,0.5f,-3f),
-		new Vector3(-2f,0.5f,-2f),
-		new Vector3(-3f,0.5f,0f),
-		new Vector3(-2f,0.5f,2f)
-	};
-
-	void OnGUI()
-	{
-		if (Network.isClient || Network.isServer) {
-			GUI.TextArea(new Rect (20,20,67,23), "Players: "+ playerCount);
-			if (GUI.Button (new Rect(0,50,150,60), "Disconnect")) Network.Disconnect ();
+	void refreshPlayerList(int itemCount){
+		int childCount = GameObject.FindGameObjectWithTag ("PlayerContainer").transform.childCount;
+		for (int i=0; i<childCount; i++) {
+			Destroy (GameObject.FindGameObjectWithTag ("PlayerContainer").transform.GetChild (0).gameObject);
 		}
+		RectTransform rowRectTransform = userOnListPrefab.GetComponent<RectTransform> ();
+		RectTransform containerRectTransform = GameObject.FindGameObjectWithTag ("PlayerContainer").GetComponent<RectTransform> ();
+		float width = containerRectTransform.rect.width;
+		float height = rowRectTransform.rect.height;
+
+		for (int i=0; i < itemCount; i++) {
+			//Create new button
+			GameObject newItem = Instantiate (userOnListPrefab) as GameObject;
+			newItem.name = GameObject.FindGameObjectWithTag ("PlayerContainer").name + " player at position " + i;
+			newItem.transform.parent = GameObject.FindGameObjectWithTag ("PlayerContainer").transform;
+
+			//Move and Size Button
+			RectTransform rectTransform = newItem.GetComponent<RectTransform>();
+
+			float x = -containerRectTransform.rect.width / 2;
+			float y = containerRectTransform.rect.height/ 2 - height * (i+1);
+			rectTransform.offsetMin = new Vector2(x, y);
+
+			x = rectTransform.offsetMin.x + width;
+			y = rectTransform.offsetMin.y + height;
+			rectTransform.offsetMax = new Vector2(x, y);
+		}
+	}
+
+
+//PUBLIC METHODS
+
+	public void setName(string name){
+		myName = name;
+		gameName = myName + "'s Room";
+	}
+
+	public string getName(){
+		return myName;
 	} 
-
-	public void exitGame(){
-		Application.Quit ();
-	}
 
 	public void StartServer()
 	{
@@ -69,18 +79,9 @@ public class NetworkController : MonoBehaviour {
 		MasterServer.RegisterHost(typeName, gameName);
 	}
 
-	public HostData[] hostList;
-	
 	public void RefreshHostList()
 	{
 		MasterServer.RequestHostList(typeName);
-	}
-	
-	void OnMasterServerEvent(MasterServerEvent msEvent)
-	{
-		if (msEvent == MasterServerEvent.HostListReceived)
-			hostList = MasterServer.PollHostList();
-		GameObject.FindGameObjectWithTag ("ServerList").GetComponent<ListServersController> ().listServers (hostList);	//Envia para o ListServers a lista de servidores recebeidas do MasterServer
 	}
 
 	public void JoinServer(HostData hostData)
@@ -88,25 +89,38 @@ public class NetworkController : MonoBehaviour {
 		Network.Connect(hostData);
 	}
 
-	public GameObject playerPrefab;
-	
+	public void exitGame(){
+		Application.Quit ();
+	}
+
+	public void createUserOnList(string name){
+		Network.Instantiate(userOnListPrefab, new Vector3(0,0,0),Quaternion.identity,5);
+	}
+
+
+//PRIVATE METHODS
+
+	void Awake(){
+		DontDestroyOnLoad (this);
+	}
+
+	void OnMasterServerEvent(MasterServerEvent msEvent)
+	{
+		if (msEvent == MasterServerEvent.HostListReceived)
+			hostList = MasterServer.PollHostList();
+		GameObject.FindGameObjectWithTag ("ServerList").GetComponent<ListServersController> ().listServers (hostList);	//Envia para o ListServers a lista de servidores recebeidas do MasterServer
+	}
+
 	void OnServerInitialized()
 	{
-		SpawnPlayer ();
+		//
 	}
 	
 	void OnConnectedToServer()
 	{
-		networkView.RPC ("sendPlayerCount", RPCMode.Server);
-		networkView.RPC ("enablePlayerCreation", RPCMode.Server, Network.player);
-	}
-	
-	private void SpawnPlayer()
-	{
-		Update ();
-		Debug.Log (playerCount);
-		Network.Instantiate(playerPrefab, playerPositions[playerCount-1], Quaternion.identity, 0);	//Instancia na rede um novo jogado, na posicao playersCount-1
-
+		menucanvas.SetActive (false);
+		lobbycanvas.SetActive (true);
+		refreshList ();
 	}
 
 	void OnDisconnectedFromServer(NetworkDisconnection info) {
@@ -125,8 +139,4 @@ public class NetworkController : MonoBehaviour {
 		Network.DestroyPlayerObjects (Network.player);
 	}
 
-	public void setName(string name){
-		myName = name;
-		gameName = myName + "'s Room";
-	}
 }
