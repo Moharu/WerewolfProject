@@ -7,6 +7,7 @@ public class NetworkController : MonoBehaviour {
 	public GameObject lobbycanvas;
 	public GameObject menucanvas;
 	public GameObject selectservercanvas;
+	private string[] playersOnServer = {"-","-","-","-","-","-"};
 
 	void Start(){
 		selectservercanvas = GameObject.FindGameObjectWithTag ("SelectServerCanvas");
@@ -24,6 +25,32 @@ public class NetworkController : MonoBehaviour {
 
 //RPC METHODS
 	[RPC]
+	void addPlayerToList(string name){
+		for (int i=0; i<4; i++) {
+			if(playersOnServer[5-i] != "-"){
+				if(playersOnServer[4-i] != "-")
+					playersOnServer[4-i] = playersOnServer[5-i];
+				playersOnServer[5-i] = "-";
+			}
+		}
+		for (int i=0; i<6; i++) {
+			if(playersOnServer[i] == "-"){
+				playersOnServer[i] = name;
+				break;
+			}
+		}
+		networkView.RPC ("publishPlayerList", RPCMode.Others, playersOnServer);
+	}
+
+	[RPC]
+	void publishPlayerList(string[] players){
+		Debug.Log ("aqui");
+		for (int i=0; i<6; i++) {
+			playersOnServer[i] = players[i];
+		}
+	}
+
+	[RPC]
 	private void getPlayerListForAll(){
 		if (Network.isServer) {
 			networkView.RPC ("refreshPlayerList", RPCMode.All, (Network.connections.Length + 1));
@@ -32,10 +59,7 @@ public class NetworkController : MonoBehaviour {
 
 	[RPC]
 	void refreshPlayerList(int itemCount){
-		int childCount = GameObject.FindGameObjectWithTag ("PlayerContainer").transform.childCount;
-		for (int i=0; i<childCount; i++) {
-			Destroy (GameObject.FindGameObjectWithTag ("PlayerContainer").transform.GetChild (0).gameObject);
-		}
+		destroyPlayerList ();
 		RectTransform rowRectTransform = userOnListPrefab.GetComponent<RectTransform> ();
 		RectTransform containerRectTransform = GameObject.FindGameObjectWithTag ("PlayerContainer").GetComponent<RectTransform> ();
 		float width = containerRectTransform.rect.width;
@@ -46,7 +70,7 @@ public class NetworkController : MonoBehaviour {
 			GameObject newItem = Instantiate (userOnListPrefab) as GameObject;
 			newItem.name = GameObject.FindGameObjectWithTag ("PlayerContainer").name + " player at position " + i;
 			newItem.transform.parent = GameObject.FindGameObjectWithTag ("PlayerContainer").transform;
-
+			newItem.GetComponentInChildren<Text>().text = playersOnServer[i];
 			//Move and Size Button
 			RectTransform rectTransform = newItem.GetComponent<RectTransform>();
 
@@ -62,6 +86,10 @@ public class NetworkController : MonoBehaviour {
 
 
 //PUBLIC METHODS
+
+	public void refreshList2(){
+		networkView.RPC ("publishPlayerList", RPCMode.Others, playersOnServer);
+	}
 
 	public void setName(string name){
 		myName = name;
@@ -104,6 +132,13 @@ public class NetworkController : MonoBehaviour {
 		Network.Disconnect ();
 	}
 
+	public void destroyPlayerList(){
+		int childCount = GameObject.FindGameObjectWithTag ("PlayerContainer").transform.childCount;
+		for (int i=0; i<childCount; i++) {
+			Destroy (GameObject.FindGameObjectWithTag ("PlayerContainer").transform.GetChild (0).gameObject);
+		}
+	}
+
 //PRIVATE METHODS
 
 	void Awake(){
@@ -120,7 +155,7 @@ public class NetworkController : MonoBehaviour {
 
 	void OnServerInitialized()
 	{
-		//
+		playersOnServer [0] = myName;
 	}
 	
 	void OnConnectedToServer()
@@ -128,10 +163,12 @@ public class NetworkController : MonoBehaviour {
 		selectservercanvas.SetActive (false);
 		menucanvas.SetActive (false);
 		lobbycanvas.SetActive (true);
+		networkView.RPC ("addPlayerToList", RPCMode.Server, myName);
 		refreshList ();
 	}
 
 	void OnDisconnectedFromServer(NetworkDisconnection info) {
+		destroyPlayerList ();
 		foreach (GameObject player in GameObject.FindGameObjectsWithTag("Players")) {
 			Destroy (player);
 		}
@@ -140,6 +177,7 @@ public class NetworkController : MonoBehaviour {
 	}
 
 	void OnPlayerDisconnected(NetworkPlayer player){
+		destroyPlayerList ();
 		if(Network.isServer) Network.DestroyPlayerObjects (player);
 		Network.RemoveRPCs(player);	//FUNCIONA
 		refreshList ();

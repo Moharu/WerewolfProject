@@ -2,9 +2,7 @@
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
   <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\NetworkController.cs">
     <Files>
-      <File FileName="Assets\Scripts\NetworkController.cs" Line="128" Column="40" />
-      <File FileName="Assets\Scripts\ServerScript.cs" Line="10" Column="26" />
-      <File FileName="Assets\Scripts\ListServersController.cs" Line="8" Column="31" />
+      <File FileName="Assets\Scripts\NetworkController.cs" Line="91" Column="57" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
